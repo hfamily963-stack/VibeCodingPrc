@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>로또 번호 생성기</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --canvas: #181818;
+      --canvas-light: #ffffff;
+      --canvas-elevated: #303030;
+      --primary: #da291c;
+      --primary-active: #b01e0a;
+      --ink: #ffffff;
+      --body: #969696;
+      --body-on-light: #181818;
+      --muted: #8f8f8f;
+      --hairline: #303030;
+      --hairline-on-light: #d2d2d2;
+      --hairline-soft: #ebebeb;
+      --shadow: 0 24px 70px rgba(0, 0, 0, 0.32);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      min-height: 100%;
+    }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 18% 10%, rgba(218, 41, 28, 0.18), transparent 18%),
+        radial-gradient(circle at 82% 12%, rgba(255, 255, 255, 0.08), transparent 15%),
+        linear-gradient(180deg, #1c1c1c 0%, #181818 42%, #111 100%);
+      color: var(--ink);
+      font-family: "FerrariSans", "Inter", "Segoe UI", "Apple SD Gothic Neo", sans-serif;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(120deg, rgba(255, 255, 255, 0.02), transparent 18%, rgba(255, 255, 255, 0.01) 56%, transparent 72%),
+        repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.015) 0 1px, transparent 1px 5px);
+      opacity: 0.18;
+      mix-blend-mode: screen;
+    }
+
+    .page {
+      position: relative;
+      isolation: isolate;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      height: 64px;
+      padding: 0 28px;
+      border-bottom: 1px solid var(--hairline);
+      background: rgba(24, 24, 24, 0.82);
+      backdrop-filter: blur(18px);
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--primary);
+      background: linear-gradient(180deg, rgba(218, 41, 28, 0.28), rgba(24, 24, 24, 0.9));
+      color: var(--ink);
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    }
+
+    .brand-copy {
+      display: grid;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .brand-copy strong,
+    .brand-copy span,
+    .nav-link,
+    .eyebrow,
+    .button,
+    .mini-label,
+    .sheet-kicker,
+    .field-label .hint,
+    .ticket-title,
+    .stat .label,
+    .hero-meta {
+      text-transform: uppercase;
+      letter-spacing: 0.65px;
+    }
+
+    .brand-copy strong {
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.2;
+    }
+
+    .brand-copy span {
+      font-size: 11px;
+      color: var(--body);
+      font-weight: 400;
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .nav-link {
+      color: var(--ink);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.4;
+      opacity: 0.88;
+    }
+
+    .nav-link:hover {
+      opacity: 1;
+    }
+
+    .hero {
+      position: relative;
+      min-height: calc(100vh - 64px);
+      display: grid;
+      align-items: end;
+      overflow: hidden;
+      border-bottom: 1px solid var(--hairline);
+    }
+
+    .hero-media {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+    }
+
+    .hero-media svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+      transform: scale(1.06);
+      animation: heroDrift 14s ease-in-out infinite alternate;
+    }
+
+    .hero-media::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(180deg, rgba(24, 24, 24, 0.08) 0%, rgba(24, 24, 24, 0.2) 42%, rgba(24, 24, 24, 0.82) 100%),
+        radial-gradient(circle at 50% 68%, transparent 0 20%, rgba(24, 24, 24, 0.72) 55%, rgba(24, 24, 24, 0.9) 100%);
+    }
+
+    .hero-visual {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .hero-visual::before,
+    .hero-visual::after {
+      content: "";
+      position: absolute;
+      inset: auto;
+      border-radius: 999px;
+      filter: blur(50px);
+      opacity: 0.7;
+      animation: glowPulse 9s ease-in-out infinite;
+    }
+
+    .hero-visual::before {
+      width: 460px;
+      height: 180px;
+      left: 8%;
+      top: 15%;
+      background: rgba(218, 41, 28, 0.24);
+    }
+
+    .hero-visual::after {
+      width: 340px;
+      height: 140px;
+      right: 12%;
+      top: 12%;
+      background: rgba(255, 255, 255, 0.14);
+      animation-delay: -4s;
+    }
+
+    .hero-copy {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      gap: 18px;
+      width: min(760px, calc(100% - 56px));
+      margin: 0 28px 48px;
+      animation: revealUp 0.9s ease 0.05s both;
+    }
+
+    .eyebrow {
+      width: fit-content;
+      padding: 6px 12px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--body);
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.4;
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 10ch;
+      font-size: clamp(3.1rem, 8vw, 5rem);
+      line-height: 1.02;
+      letter-spacing: -0.05em;
+      font-weight: 500;
+      color: var(--ink);
+    }
+
+    .hero-copy p {
+      margin: 0;
+      max-width: 68ch;
+      color: var(--body);
+      font-size: 16px;
+      line-height: 1.7;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .button {
+      appearance: none;
+      border: 1px solid transparent;
+      border-radius: 0;
+      height: 48px;
+      padding: 0 32px;
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1;
+      cursor: pointer;
+      transition: transform 0.18s ease, background-color 0.18s ease, border-color 0.18s ease, opacity 0.18s ease;
+    }
+
+    .button:hover {
+      transform: translateY(-1px);
+    }
+
+    .button:active {
+      transform: translateY(0);
+    }
+
+    .button-primary {
+      background: var(--primary);
+      color: var(--ink);
+      box-shadow: 0 12px 24px rgba(218, 41, 28, 0.24);
+    }
+
+    .button-primary:hover {
+      background: var(--primary-active);
+    }
+
+    .button-outline {
+      background: transparent;
+      color: var(--ink);
+      border-color: rgba(255, 255, 255, 0.22);
+    }
+
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      color: var(--body);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1.1px;
+    }
+
+    .hero-meta span {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .hero-meta span::before {
+      content: "";
+      width: 18px;
+      height: 1px;
+      background: var(--primary);
+    }
+
+    .sheet {
+      position: relative;
+      background: var(--canvas-light);
+      color: var(--body-on-light);
+    }
+
+    .sheet-inner {
+      width: min(1280px, calc(100% - 56px));
+      margin: 0 auto;
+      padding: 44px 0 56px;
+    }
+
+    .sheet-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+      gap: 28px;
+      align-items: end;
+      padding-bottom: 28px;
+      border-bottom: 1px solid var(--hairline-on-light);
+    }
+
+    .sheet-kicker {
+      color: #6d6d6d;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1.1px;
+      margin: 0 0 12px;
+    }
+
+    .sheet-title {
+      margin: 0;
+      font-size: clamp(2rem, 4vw, 3.6rem);
+      line-height: 1.04;
+      letter-spacing: -0.04em;
+      font-weight: 500;
+      color: var(--body-on-light);
+    }
+
+    .sheet-copy {
+      margin: 14px 0 0;
+      color: #5f5f5f;
+      font-size: 15px;
+      line-height: 1.7;
+      max-width: 64ch;
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 20px;
+      padding: 28px 0;
+      border-bottom: 1px solid var(--hairline-soft);
+    }
+
+    .field {
+      display: grid;
+      gap: 10px;
+    }
+
+    .field-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--body-on-light);
+    }
+
+    .field-label .hint {
+      color: #7a7a7a;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+
+    input[type="number"] {
+      width: 100%;
+      height: 48px;
+      padding: 0 16px;
+      border: 1px solid var(--hairline-on-light);
+      border-radius: 4px;
+      background: var(--canvas-light);
+      color: var(--body-on-light);
+      font: inherit;
+      outline: none;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    input[type="number"]:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(218, 41, 28, 0.12);
+    }
+
+    .toolbar-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      align-self: end;
+    }
+
+    .toolbar-actions .button {
+      color: var(--body-on-light);
+      border-color: var(--hairline-on-light);
+    }
+
+    .toolbar-actions .button-primary {
+      color: var(--ink);
+      border-color: var(--primary);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      padding: 24px 0 0;
+    }
+
+    .stat {
+      padding: 18px 20px;
+      border: 1px solid var(--hairline-soft);
+      background: #fff;
+    }
+
+    .stat .label {
+      display: block;
+      margin-bottom: 8px;
+      color: #666;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1.1px;
+    }
+
+    .stat .value {
+      font-size: 28px;
+      line-height: 1;
+      letter-spacing: -0.04em;
+      font-weight: 500;
+      color: var(--body-on-light);
+    }
+
+    .status {
+      padding: 16px 0 0;
+      color: #6d6d6d;
+      font-size: 13px;
+      line-height: 1.6;
+      min-height: 24px;
+    }
+
+    .results {
+      padding: 22px 0 0;
+    }
+
+    .ticket-list {
+      display: grid;
+      gap: 14px;
+    }
+
+    .ticket {
+      display: grid;
+      grid-template-columns: 80px minmax(0, 1fr);
+      gap: 18px;
+      align-items: center;
+      padding: 20px 22px;
+      border: 1px solid var(--hairline-soft);
+      background: #fff;
+      opacity: 0;
+      transform: translateY(18px);
+      animation: ticketIn 0.7s ease both;
+      animation-delay: var(--delay, 0ms);
+    }
+
+    .ticket-index {
+      display: grid;
+      place-items: center;
+      width: 80px;
+      height: 80px;
+      border: 1px solid var(--hairline-on-light);
+      background: linear-gradient(180deg, #fafafa, #f2f2f2);
+      color: var(--body-on-light);
+      font-size: 28px;
+      font-weight: 500;
+      letter-spacing: -0.04em;
+    }
+
+    .ticket-body {
+      display: grid;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .ticket-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .ticket-title {
+      margin: 0;
+      color: #5f5f5f;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1.1px;
+    }
+
+    .ticket-sub {
+      color: #7d7d7d;
+      font-size: 12px;
+      font-weight: 400;
+    }
+
+    .balls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .ball {
+      display: inline-grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
+      border-radius: 999px;
+      border: 1px solid var(--hairline-on-light);
+      background: linear-gradient(180deg, #ffffff, #f3f3f3);
+      color: var(--body-on-light);
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+      animation: ballPop 0.5s ease both;
+      animation-delay: calc(var(--delay, 0ms) + var(--ball-delay, 0ms));
+    }
+
+    .ball--charcoal {
+      background: linear-gradient(180deg, #3a3a3a, #202020);
+      color: #fff;
+      border-color: #2b2b2b;
+    }
+
+    .ball--smoke {
+      background: linear-gradient(180deg, #ececec, #dcdcdc);
+      color: var(--body-on-light);
+      border-color: #d6d6d6;
+    }
+
+    .ball--accent {
+      background: linear-gradient(180deg, var(--primary), var(--primary-active));
+      color: #fff;
+      border-color: var(--primary);
+    }
+
+    .ball--outline {
+      background: transparent;
+      color: var(--primary);
+      border-color: var(--primary);
+    }
+
+    .empty {
+      padding: 34px 24px;
+      border: 1px dashed var(--hairline-on-light);
+      background: #fafafa;
+      color: #6b6b6b;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .footer-note {
+      padding-top: 22px;
+      color: #6c6c6c;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    @keyframes heroDrift {
+      0% { transform: scale(1.06) translate3d(0, 0, 0); }
+      100% { transform: scale(1.1) translate3d(-1.5%, 1%, 0); }
+    }
+
+    @keyframes glowPulse {
+      0%, 100% { transform: scale(1); opacity: 0.58; }
+      50% { transform: scale(1.08); opacity: 0.82; }
+    }
+
+    @keyframes revealUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes ticketIn {
+      from { opacity: 0; transform: translateY(22px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes ballPop {
+      0% { opacity: 0; transform: scale(0.7); }
+      70% { opacity: 1; transform: scale(1.07); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    @media (max-width: 1024px) {
+      .sheet-head,
+      .toolbar {
+        grid-template-columns: 1fr;
+      }
+
+      .toolbar-actions {
+        justify-content: flex-start;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .topbar { padding: 0 18px; }
+      .nav { gap: 12px; }
+      .nav-link { font-size: 12px; }
+      .hero-copy { width: calc(100% - 36px); margin: 0 18px 32px; }
+      .sheet-inner { width: calc(100% - 36px); padding: 28px 0 42px; }
+      .stats { grid-template-columns: 1fr; }
+      .ticket { grid-template-columns: 1fr; }
+      .ticket-index { width: 68px; height: 68px; font-size: 24px; }
+      .ball { width: 40px; height: 40px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <div class="brand" aria-label="Lotto Corsa">
+        <div class="brand-mark">L</div>
+        <div class="brand-copy">
+          <strong>LOTTO CORSA</strong>
+          <span>editorial draw desk</span>
+        </div>
+      </div>
+      <nav class="nav" aria-label="Quick actions">
+        <a class="nav-link" href="#generate">Generate</a>
+        <a class="nav-link" href="#results">Results</a>
+        <a class="nav-link" href="#copy">Copy</a>
+      </nav>
+    </header>
+
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-media" aria-hidden="true">
+        <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" role="presentation">
+          <defs>
+            <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#1d1d1d" />
+              <stop offset="100%" stop-color="#101010" />
+            </linearGradient>
+            <linearGradient id="car" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#2d2d2d" />
+              <stop offset="48%" stop-color="#151515" />
+              <stop offset="100%" stop-color="#000000" />
+            </linearGradient>
+            <linearGradient id="red" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#8f1308" />
+              <stop offset="45%" stop-color="#da291c" />
+              <stop offset="100%" stop-color="#ff5b4c" />
+            </linearGradient>
+            <filter id="blur">
+              <feGaussianBlur stdDeviation="38" />
+            </filter>
+          </defs>
+          <rect width="1600" height="900" fill="url(#bg)" />
+          <ellipse cx="1170" cy="180" rx="280" ry="130" fill="rgba(218,41,28,0.25)" filter="url(#blur)" />
+          <ellipse cx="420" cy="230" rx="210" ry="110" fill="rgba(255,255,255,0.08)" filter="url(#blur)" />
+          <path d="M-40 720 C 230 640, 560 620, 840 635 C 1100 650, 1380 682, 1640 710" fill="none" stroke="#2e2e2e" stroke-width="3" />
+          <path d="M120 690 C 360 630, 640 614, 930 624 C 1120 632, 1280 652, 1490 690" fill="none" stroke="#444" stroke-width="1.5" opacity="0.85" />
+          <path d="M240 580 C 400 490, 640 468, 920 484 C 1090 494, 1250 536, 1360 596 L 1360 618 C 1292 618, 1228 620, 1158 620 C 1030 620, 920 622, 800 628 C 620 636, 432 640, 260 622 L 220 610 C 212 603, 214 590, 240 580 Z" fill="url(#car)" />
+          <path d="M400 520 C 470 474, 560 452, 680 448 C 810 444, 930 454, 1040 478" fill="none" stroke="url(#red)" stroke-width="10" stroke-linecap="round" opacity="0.95" />
+          <path d="M430 530 C 520 494, 610 476, 720 472 C 770 470, 850 476, 960 494" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="4" stroke-linecap="round" />
+          <path d="M340 600 C 462 552, 620 532, 840 540 C 1004 546, 1146 568, 1260 604" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2" />
+          <circle cx="500" cy="640" r="88" fill="#090909" stroke="#3c3c3c" stroke-width="10" />
+          <circle cx="500" cy="640" r="48" fill="none" stroke="rgba(255,255,255,0.09)" stroke-width="3" />
+          <circle cx="1120" cy="642" r="92" fill="#090909" stroke="#3c3c3c" stroke-width="10" />
+          <circle cx="1120" cy="642" r="50" fill="none" stroke="rgba(255,255,255,0.09)" stroke-width="3" />
+          <path d="M318 610 L 390 572 L 414 618" fill="rgba(255,255,255,0.05)" />
+          <path d="M1298 598 L 1368 590 L 1386 616" fill="rgba(255,255,255,0.04)" />
+          <rect x="780" y="410" width="118" height="10" fill="#ffffff" opacity="0.1" />
+          <rect x="912" y="414" width="76" height="8" fill="#ffffff" opacity="0.08" />
+          <path d="M980 462 L 1200 500" stroke="rgba(255,255,255,0.14)" stroke-width="2" />
+          <rect x="1120" y="336" width="12" height="360" fill="url(#red)" opacity="0.76" />
+          <rect x="1144" y="346" width="6" height="344" fill="rgba(255,255,255,0.12)" opacity="0.7" />
+        </svg>
+      </div>
+
+      <div class="hero-visual" aria-hidden="true"></div>
+
+      <div class="hero-copy">
+        <div class="eyebrow">Rosso Corsa edition</div>
+        <h1 id="hero-title">로또 번호 생성기</h1>
+        <p>
+          1부터 45까지의 숫자 중 중복 없이 6개를 뽑아 한 번에 여러 세트를 생성합니다.
+          다크 시네마틱 히어로, sharp CTA, editorial data band, 그리고 자연스러운 등장 애니메이션을 적용했습니다.
+        </p>
+        <div class="hero-actions">
+          <button class="button button-primary" id="generate">번호 생성</button>
+          <button class="button button-outline" id="copy">복사하기</button>
+          <button class="button button-outline" id="clear">초기화</button>
+        </div>
+        <div class="hero-meta" aria-hidden="true">
+          <span>1-45</span>
+          <span>6 numbers</span>
+          <span>no duplicates</span>
+        </div>
+      </div>
+    </section>
+
+    <main class="sheet">
+      <div class="sheet-inner">
+        <section class="sheet-head" aria-labelledby="sheet-title">
+          <div>
+            <p class="sheet-kicker">Draw sheet / editorial table</p>
+            <h2 class="sheet-title" id="sheet-title">세련된 데이터 밴드에 결과를 정리합니다</h2>
+            <p class="sheet-copy">
+              생성 수를 정하고 번호를 뽑으면, 결과가 매끈한 카드 리스트로 정렬됩니다.
+              복사 버튼은 세트별 텍스트를 클립보드에 넣어 줍니다.
+            </p>
+          </div>
+          <div class="mini-label" style="justify-self:end; color:#6f6f6f; font-size:11px; font-weight:600; letter-spacing:1.1px;">
+            SHARP CORNERS / RED ACCENT / FULL-BLEED HERO
+          </div>
+        </section>
+
+        <section class="toolbar" aria-label="Generator controls">
+          <div class="field">
+            <div class="field-label">
+              <label for="count">생성할 세트 수</label>
+              <span class="hint">최대 20세트</span>
+            </div>
+            <input id="count" type="number" min="1" max="20" step="1" value="5" />
+          </div>
+
+          <div class="field">
+            <div class="field-label">
+              <span>동작</span>
+              <span class="hint">uppercase labels</span>
+            </div>
+            <div class="toolbar-actions">
+              <button class="button button-primary" id="generate-secondary">번호 생성</button>
+              <button class="button" id="copy-secondary">복사하기</button>
+              <button class="button" id="clear-secondary">초기화</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="stats" aria-label="Current state">
+          <div class="stat">
+            <span class="label">세트 수</span>
+            <div class="value" id="stat-count">0</div>
+          </div>
+          <div class="stat">
+            <span class="label">총 번호 개수</span>
+            <div class="value" id="stat-total">0</div>
+          </div>
+          <div class="stat">
+            <span class="label">최종 생성 시간</span>
+            <div class="value" id="stat-time">-</div>
+          </div>
+        </section>
+
+        <div class="status" id="status">아직 생성된 번호가 없습니다.</div>
+
+        <section class="results" id="results" aria-label="Generated results">
+          <div class="empty">번호를 생성하면 이곳에 결과가 표시됩니다.</div>
+        </section>
+
+        <div class="footer-note">
+          번호는 1~45 범위에서 완전 무작위로 추출되며, 각 세트는 6개의 서로 다른 숫자로 구성됩니다.
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const countInput = document.getElementById("count");
+    const results = document.getElementById("results");
+    const status = document.getElementById("status");
+    const statCount = document.getElementById("stat-count");
+    const statTotal = document.getElementById("stat-total");
+    const statTime = document.getElementById("stat-time");
+    const primaryGenerate = document.getElementById("generate");
+    const primaryCopy = document.getElementById("copy");
+    const primaryClear = document.getElementById("clear");
+    const secondaryGenerate = document.getElementById("generate-secondary");
+    const secondaryCopy = document.getElementById("copy-secondary");
+    const secondaryClear = document.getElementById("clear-secondary");
+
+    const latestTickets = [];
+
+    function shuffle(values) {
+      const copy = values.slice();
+      for (let index = copy.length - 1; index > 0; index -= 1) {
+        const swapIndex = Math.floor(Math.random() * (index + 1));
+        [copy[index], copy[swapIndex]] = [copy[swapIndex], copy[index]];
+      }
+      return copy;
+    }
+
+    function buildTicket() {
+      return shuffle(Array.from({ length: 45 }, (_, index) => index + 1))
+        .slice(0, 6)
+        .sort((left, right) => left - right);
+    }
+
+    function toneClass(number) {
+      if (number <= 10) return "ball--outline";
+      if (number <= 20) return "ball--charcoal";
+      if (number <= 30) return "ball--smoke";
+      if (number <= 40) return "ball--charcoal";
+      return "ball--accent";
+    }
+
+    function animateNumber(element, nextValue, duration = 520) {
+      const startValue = Number(element.dataset.value || "0");
+      const startTime = performance.now();
+
+      function step(now) {
+        const progress = Math.min((now - startTime) / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const current = Math.round(startValue + (nextValue - startValue) * eased);
+        element.textContent = String(current);
+        if (progress < 1) {
+          requestAnimationFrame(step);
+        } else {
+          element.dataset.value = String(nextValue);
+        }
+      }
+
+      requestAnimationFrame(step);
+    }
+
+    function updateStats() {
+      animateNumber(statCount, latestTickets.length);
+      animateNumber(statTotal, latestTickets.length * 6);
+      statTime.textContent = latestTickets.length
+        ? new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })
+        : "-";
+    }
+
+    function renderTickets() {
+      if (latestTickets.length === 0) {
+        results.innerHTML = '<div class="empty">번호를 생성하면 이곳에 결과가 표시됩니다.</div>';
+        status.textContent = "아직 생성된 번호가 없습니다.";
+        updateStats();
+        return;
+      }
+
+      results.innerHTML = latestTickets.map((ticket, index) => {
+        const balls = ticket.map((number, ballIndex) => {
+          const classes = ["ball", toneClass(number)];
+          if (ballIndex === 0) classes.push("ball--accent");
+          return `<span class="${classes.join(" ")}" style="--ball-delay:${ballIndex * 70}ms;">${String(number).padStart(2, "0")}</span>`;
+        }).join("");
+
+        return `
+          <article class="ticket" style="--delay:${index * 110}ms">
+            <div class="ticket-index">${index + 1}</div>
+            <div class="ticket-body">
+              <div class="ticket-head">
+                <h3 class="ticket-title">${index + 1}세트</h3>
+                <div class="ticket-sub">1 ~ 45 / 6 numbers</div>
+              </div>
+              <div class="balls">${balls}</div>
+            </div>
+          </article>
+        `;
+      }).join("");
+
+      status.textContent = `총 ${latestTickets.length}세트를 생성했습니다. 첫 번째 세트: ${latestTickets[0].join(", ")}`;
+      updateStats();
+    }
+
+    function generateTickets() {
+      const parsed = Number.parseInt(countInput.value, 10);
+      const safeCount = Number.isFinite(parsed) ? Math.min(20, Math.max(1, parsed)) : 5;
+      countInput.value = String(safeCount);
+      latestTickets.splice(0, latestTickets.length, ...Array.from({ length: safeCount }, buildTicket));
+      renderTickets();
+    }
+
+    async function copyTickets() {
+      if (latestTickets.length === 0) {
+        status.textContent = "복사할 번호가 없습니다. 먼저 번호를 생성하세요.";
+        return;
+      }
+
+      const text = latestTickets
+        .map((ticket, index) => `${index + 1}세트: ${ticket.join(", ")}`)
+        .join("\n");
+
+      try {
+        await navigator.clipboard.writeText(text);
+        status.textContent = "생성된 번호를 클립보드에 복사했습니다.";
+      } catch {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.setAttribute("readonly", "");
+        textArea.style.position = "fixed";
+        textArea.style.opacity = "0";
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+        status.textContent = "생성된 번호를 복사했습니다.";
+      }
+    }
+
+    function clearTickets() {
+      latestTickets.splice(0, latestTickets.length);
+      countInput.value = "5";
+      renderTickets();
+    }
+
+    [primaryGenerate, secondaryGenerate].forEach((button) => button.addEventListener("click", generateTickets));
+    [primaryCopy, secondaryCopy].forEach((button) => button.addEventListener("click", copyTickets));
+    [primaryClear, secondaryClear].forEach((button) => button.addEventListener("click", clearTickets));
+
+    countInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        generateTickets();
+      }
+    });
+
+    renderTickets();
+  </script>
+</body>
+</html>
