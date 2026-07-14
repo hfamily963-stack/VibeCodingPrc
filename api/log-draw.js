@@ -18,6 +18,14 @@ function normalizeSupabaseTable(table) {
 
 const SUPABASE_TABLE = normalizeSupabaseTable(process.env.SUPABASE_TABLE || "lotto_draw_logs");
 
+function isApiSupabaseUrl(value) {
+  if (typeof value !== "string") {
+    return false;
+  }
+
+  return value.includes("api.supabase.com");
+}
+
 function sendJson(res, statusCode, body) {
   res.statusCode = statusCode;
   res.setHeader("Cache-Control", "no-store");
@@ -140,7 +148,10 @@ async function insertDrawLog(payload) {
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`Supabase insert failed: ${response.status} ${text}`);
+    const error = new Error(`Supabase insert failed: ${response.status} ${text}`);
+    error.status = response.status;
+    error.details = text;
+    throw error;
   }
 }
 
@@ -159,6 +170,12 @@ module.exports = async function handler(req, res) {
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     return sendJson(res, 500, {
       error: "Supabase environment variables are not configured.",
+    });
+  }
+
+  if (isApiSupabaseUrl(SUPABASE_URL)) {
+    return sendJson(res, 500, {
+      error: "SUPABASE_URL must be your Supabase Project URL, not api.supabase.com.",
     });
   }
 
@@ -188,6 +205,8 @@ module.exports = async function handler(req, res) {
     console.error("Failed to log lotto draw", error);
     return sendJson(res, 502, {
       error: "Failed to save draw log.",
+      detail: error && error.message ? error.message : "Unknown error",
+      status: error && typeof error.status === "number" ? error.status : undefined,
     });
   }
 };
