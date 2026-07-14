@@ -26,6 +26,18 @@ function isApiSupabaseUrl(value) {
   return value.includes("api.supabase.com");
 }
 
+function getSupabaseUrlHost(value) {
+  if (typeof value !== "string" || !value.trim()) {
+    return "missing";
+  }
+
+  try {
+    return new URL(value).host;
+  } catch {
+    return "invalid-url";
+  }
+}
+
 function sendJson(res, statusCode, body) {
   res.statusCode = statusCode;
   res.setHeader("Cache-Control", "no-store");
@@ -160,6 +172,10 @@ module.exports = async function handler(req, res) {
     return sendJson(res, 200, {
       ok: true,
       message: "POST lotto tickets to store draw logs.",
+      supabase_url_host: getSupabaseUrlHost(SUPABASE_URL),
+      supabase_schema: SUPABASE_SCHEMA,
+      supabase_table: SUPABASE_TABLE,
+      has_service_role_key: Boolean(SUPABASE_SERVICE_ROLE_KEY),
     });
   }
 
