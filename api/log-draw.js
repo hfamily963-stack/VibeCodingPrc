@@ -150,8 +150,6 @@ async function insertDrawLog(payload) {
     headers: {
       apikey: SUPABASE_SERVICE_ROLE_KEY,
       Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-      "Accept-Profile": SUPABASE_SCHEMA,
-      "Content-Profile": SUPABASE_SCHEMA,
       "Content-Type": "application/json",
       Prefer: "return=minimal",
     },
