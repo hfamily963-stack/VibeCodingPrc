@@ -1,6 +1,22 @@
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const SUPABASE_TABLE = process.env.SUPABASE_TABLE || "lotto_draw_logs";
+const SUPABASE_SCHEMA = process.env.SUPABASE_SCHEMA || "public";
+
+function normalizeSupabaseTable(table) {
+  if (typeof table !== "string") {
+    return "lotto_draw_logs";
+  }
+
+  const trimmed = table.trim();
+  if (!trimmed) {
+    return "lotto_draw_logs";
+  }
+
+  const parts = trimmed.split(".");
+  return parts[parts.length - 1] || "lotto_draw_logs";
+}
+
+const SUPABASE_TABLE = normalizeSupabaseTable(process.env.SUPABASE_TABLE || "lotto_draw_logs");
 
 function sendJson(res, statusCode, body) {
   res.statusCode = statusCode;
@@ -114,6 +130,8 @@ async function insertDrawLog(payload) {
     headers: {
       apikey: SUPABASE_SERVICE_ROLE_KEY,
       Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      "Accept-Profile": SUPABASE_SCHEMA,
+      "Content-Profile": SUPABASE_SCHEMA,
       "Content-Type": "application/json",
       Prefer: "return=minimal",
     },
