@@ -938,6 +938,12 @@
       }
     }
 
+    function trackGaEvent(eventName, parameters = {}) {
+      if (typeof window.gtag === "function") {
+        window.gtag("event", eventName, parameters);
+      }
+    }
+
     async function persistDraw(snapshot, summaryText) {
       const result = await logDraw(snapshot);
       if (result.skipped || statusState.mode !== "generated" || status.textContent !== summaryText) {
@@ -1002,7 +1008,16 @@
       renderTickets();
     }
 
-    [primaryGenerate, secondaryGenerate].forEach((button) => button.addEventListener("click", generateTickets));
+    [primaryGenerate, secondaryGenerate].forEach((button) =>
+      button.addEventListener("click", () => {
+        trackGaEvent("lotto_draw_click", {
+          button_id: button.id,
+          button_text: "추첨하기",
+          page_path: `${window.location.pathname}${window.location.search}`,
+        });
+        void generateTickets();
+      }),
+    );
     [primaryCopy, secondaryCopy].forEach((button) => button.addEventListener("click", copyTickets));
     [primaryClear, secondaryClear].forEach((button) => button.addEventListener("click", clearTickets));
 
