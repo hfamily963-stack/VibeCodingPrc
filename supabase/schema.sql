@@ -12,4 +12,4 @@ create index if not exists lotto_draw_logs_created_at_idx
 create index if not exists lotto_draw_logs_ip_address_idx
   on public.lotto_draw_logs (ip_address);
 
-alter table public.lotto_draw_logs enable row level security;
+alter table public.lotto_draw_logs enable row level security; 
